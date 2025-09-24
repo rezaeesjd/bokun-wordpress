@@ -39,8 +39,14 @@ if( !class_exists ( 'BOKUN_Settings' ) ) {
             if (is_string($bookings)) {
                 wp_send_json_success(array('msg' => esc_html($bookings),'status' => false));
             } else {
-                bokun_save_bookings_as_posts($bookings);
-                wp_send_json_success(array('msg' => 'Bookings have been successfully imported as custom posts.', 'status' => true));
+                $found_identifiers = isset($bookings['found_identifiers']) ? $bookings['found_identifiers'] : array();
+                $bookings_list = isset($bookings['bookings']) ? $bookings['bookings'] : array();
+                bokun_save_bookings_as_posts($bookings_list);
+                wp_send_json_success(array(
+                    'msg' => 'Bookings have been successfully imported as custom posts.',
+                    'status' => true,
+                    'foundBookings' => $found_identifiers,
+                ));
             }
 
             wp_die(); // Always end AJAX functions with wp_die()
