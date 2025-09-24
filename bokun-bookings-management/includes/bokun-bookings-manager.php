@@ -114,7 +114,6 @@ function bokun_fetch_bookings($upgrade = '') {
         $response = wp_remote_post($url, $args);
 
         if (is_wp_error($response)) {
-            error_log('Error fetching bookings: ' . $response->get_error_message());
             return 'Error: ' . $response->get_error_message();
         }
 
@@ -122,7 +121,6 @@ function bokun_fetch_bookings($upgrade = '') {
         $body = wp_remote_retrieve_body($response);
 
         if ($response_code !== 200) {
-            error_log('Unexpected response code: ' . $response_code . ' with body: ' . $body);
             return 'Error: Received unexpected response code ' . $response_code . '. Response: ' . $body;
         }
 
@@ -132,7 +130,11 @@ function bokun_fetch_bookings($upgrade = '') {
             break;
         }
 
-        $all_bookings = array_merge($all_bookings, $data['items']);
+        foreach ($data['items'] as $booking_item) {
+            $identifier = $booking_item['confirmationCode'] ?? ($booking_item['externalBookingReference'] ?? 'unknown identifier');
+            error_log('Found booking ' . $identifier);
+            $all_bookings[] = $booking_item;
+        }
 
         if (count($data['items']) < $payload_base['itemsPerPage']) {
             break; // No more pages available
@@ -245,7 +247,6 @@ function bokun_save_bookings_as_posts($bookings) {
         } else {
             $post_id = wp_insert_post($post_data);
             if (is_wp_error($post_id)) {
-                error_log('Error inserting post for confirmationCode: ' . $confirmationCode . '. Error: ' . $post_id->get_error_message());
                 continue;
             }
         }
@@ -265,9 +266,6 @@ $inclusions_clean = bokun_get_inclusions_clean($inclusions_text);
 
 if (!empty($inclusions_clean)) {
     update_post_meta($post_id, 'inclusions_clean', $inclusions_clean);
-    error_log('Processed Inclusions Clean: ' . $inclusions_clean);
-} else {
-    error_log('Inclusions Clean is empty.');
 }
 
     }
@@ -401,7 +399,6 @@ function bokun_assign_tag_to_post($post_id, $term_name, $taxonomy) {
         // If not, create it
         $term = wp_insert_term($term_name, $taxonomy);
         if (is_wp_error($term)) {
-            error_log("Error inserting term '$term_name' into taxonomy '$taxonomy': " . $term->get_error_message());
             return;
         }
         $term_id = $term['term_id'];
@@ -449,7 +446,6 @@ function bokun_calculate_booking_status($post_id, $product_title, $startDateTime
         $timezone = new DateTimeZone($timezone_string);
         $current_date = new DateTime('now', $timezone);
     } catch (Exception $e) {
-        error_log('Invalid timezone: ' . $timezone_string . ' - Falling back to UTC.');
         $timezone = new DateTimeZone('UTC');
         $current_date = new DateTime('now', $timezone);
     }
@@ -509,7 +505,6 @@ function bokun_assign_alarm_status_taxonomy($post_id, $alarm_status) {
     if (!$term) {
         $term = wp_insert_term($alarm_status, $taxonomy);
         if (is_wp_error($term)) {
-            error_log("Error inserting term '$alarm_status' into taxonomy '$taxonomy': " . $term->get_error_message());
             return;
         }
         // Extract the term name (in case wp_insert_term returns a term array)
@@ -537,9 +532,7 @@ function bokun_save_all_fields_as_meta($post_id, $data, $prefix = '') {
             // If the value is a JSON string, decode it
             if (is_string($value) && is_json($value)) {
                 $decoded_value = json_decode($value, true);
-                if (json_last_error() !== JSON_ERROR_NONE) {
-                    error_log("JSON decode error on $meta_key: " . json_last_error_msg());
-                } else {
+                if (json_last_error() === JSON_ERROR_NONE) {
                     $value = $decoded_value;
                 }
             }
@@ -891,12 +884,10 @@ function bokun_import_bookings() {
     $bookings = bokun_fetch_bookings();    
     if (is_array($bookings)) {
         bokun_save_bookings_as_posts($bookings);
-        error_log('Bookings imported successfully.');
         return new WP_REST_Response('Bookings imported successfully.', 200);
-    } else {
-        error_log('Error fetching bookings: ' . $bookings);
-        return new WP_REST_Response('Error fetching bookings: ' . $bookings, 500);
     }
+
+    return new WP_REST_Response('Error fetching bookings: ' . $bookings, 500);
 }
 
 // Add `partnerpageid` field to the 'Add New' term page for product tags
@@ -967,7 +958,6 @@ function bokun_get_inclusions_clean($text) {
     
     // Split the text by '---'
     $parts = explode('---', $text);
-    error_log('Inclusions Parts: ' . print_r($parts, true)); // Log parts for debugging
     
     // Ensure we have at least 4 parts (3 separators before inclusions)
     if (count($parts) >= 4) {
