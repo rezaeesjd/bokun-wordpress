@@ -21,6 +21,28 @@ function bokun_format_date() {
     return gmdate('Y-m-d H:i:s');
 }
 
+/**
+ * Generate a placeholder value for missing booking fields.
+ *
+ * @param string $field_name           The name of the field the placeholder is for.
+ * @param array  $existing_placeholders A list of values to avoid (ensures uniqueness).
+ *
+ * @return string The generated placeholder value.
+ */
+function bokun_generate_missing_field_placeholder($field_name, $existing_placeholders = []) {
+    $normalized_field = preg_replace('/[^a-z0-9]/i', '', ucwords(str_replace(['_', '-'], ' ', $field_name)));
+    if (empty($normalized_field)) {
+        $normalized_field = 'Field';
+    }
+
+    do {
+        $random_digits = wp_rand(1000, 9999);
+        $placeholder = 'Missing' . $normalized_field . $random_digits;
+    } while (in_array($placeholder, $existing_placeholders, true));
+
+    return $placeholder;
+}
+
 // Function to generate Bokun HMAC signature
 function bokun_generate_signature($date, $apiKey, $method, $endpoint, $secretKey) {
     $stringToSign = $date . $apiKey . $method . $endpoint;
@@ -130,11 +152,14 @@ function bokun_fetch_bookings($upgrade = '') {
 function bokun_save_bookings_as_posts($bookings) {
     // Step 1: Collect all confirmation codes from the imported bookings
     $imported_confirmation_codes = [];
-    foreach ($bookings as $booking) {
-        if (isset($booking['confirmationCode'])) {
-            $imported_confirmation_codes[] = $booking['confirmationCode'];
+    foreach ($bookings as &$booking) {
+        if (empty($booking['confirmationCode'])) {
+            $booking['confirmationCode'] = bokun_generate_missing_field_placeholder('confirmationCode', $imported_confirmation_codes);
         }
+
+        $imported_confirmation_codes[] = $booking['confirmationCode'];
     }
+    unset($booking);
 
     // Step 2: Set all existing `bokun_booking` posts before today to draft if not in the import list
     $today = new DateTime('today', new DateTimeZone('GMT')); // Midnight today
@@ -165,10 +190,6 @@ function bokun_save_bookings_as_posts($bookings) {
     // Step 3: Process imported bookings and save or update as usual
     foreach ($bookings as $booking) {
         // Remaining code for processing individual bookings
-        if (empty($booking['confirmationCode'])) {
-            continue;
-        }
-
         $confirmationCode = $booking['confirmationCode'];
         $post_title = $confirmationCode;
 
@@ -180,14 +201,18 @@ function bokun_save_bookings_as_posts($bookings) {
                                 : '');
 
         if (empty($startDateTime)) {
-            continue;
+            $startDateTime = current_time('timestamp', true);
+        } elseif (is_numeric($startDateTime)) {
+            $startDateTime = (float) $startDateTime;
+            if ($startDateTime > 1000000000000) {
+                $startDateTime = $startDateTime / 1000;
+            }
+        } else {
+            $parsed_time = strtotime($startDateTime);
+            $startDateTime = $parsed_time !== false ? $parsed_time : current_time('timestamp', true);
         }
 
-        if ($startDateTime > 1000000000000) {
-            $startDateTime = $startDateTime / 1000;
-        }
-
-        $startDateTimeObject = new DateTime("@$startDateTime", new DateTimeZone('UTC'));
+        $startDateTimeObject = new DateTime('@' . (int) $startDateTime, new DateTimeZone('UTC'));
         $post_date = $startDateTimeObject->format('Y-m-d H:i:s');
 
         $post_data = [
