@@ -44,15 +44,15 @@ function bokun_fetch_bookings($upgrade = '') {
     $endpoint = '/booking.json/booking-search';
 
     // Prepare payload (adjust date range and other parameters as needed)
-    $today = new DateTime('today', new DateTimeZone('GMT')); // Midnight today in GMT
-    $yesterday = (clone $today)->modify('-1 day');
-    $oneMonthLater = (clone $today)->modify('+1 month');
+    $currentDateTime = new DateTime('now', new DateTimeZone('GMT'));
+    $oneWeekAgo = (clone $currentDateTime)->modify('-1 week');
+    $oneMonthLater = (clone $currentDateTime)->modify('+1 month');
 
     $payload = json_encode([
         'page' => 1,
         'itemsPerPage' => 100, // Adjust as needed
         'startDateRange' => [
-            'from' => $today->format('Y-m-d\T00:00:00\Z'),
+            'from' => $oneWeekAgo->format('Y-m-d\TH:i:s\Z'),
             'includeLower' => true,
             'includeUpper' => true,
             'to' => $oneMonthLater->format('Y-m-d\TH:i:s\Z')
