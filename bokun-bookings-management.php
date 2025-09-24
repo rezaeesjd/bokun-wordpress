@@ -348,9 +348,33 @@ class BokunBookingManagement {
 		global $rb,$bokun_settings,$bokun_booking,$bokun_timing;
 		if( isset($_REQUEST['page']) && $_REQUEST['page'] != '' ){
             switch ( $_REQUEST['page'] ) {
-				case $this->bokun_settings:
-					$bokun_settings->bokun_display_settings();
-					break;
+                        case $this->bokun_settings:
+                                if (!isset($bokun_settings) || !is_object($bokun_settings)) {
+                                        if (!class_exists('BOKUN_Settings')) {
+                                                $settings_file = BOKUN_INCLUDES_DIR . 'bokun_settings.class.php';
+                                                if (file_exists($settings_file)) {
+                                                        include_once $settings_file;
+                                                }
+                                        }
+
+                                        if (class_exists('BOKUN_Settings')) {
+                                                $bokun_settings = new BOKUN_Settings();
+                                        }
+
+                                        if (!isset($bokun_settings) || !is_object($bokun_settings)) {
+                                                printf(
+                                                        '<div class="notice notice-error"><p>%s</p></div>',
+                                                        esc_html__(
+                                                                'Unable to initialize Bokun settings. Please reactivate the plugin.',
+                                                                BOKUN_txt_domain
+                                                        )
+                                                );
+                                                break;
+                                        }
+                                }
+
+                                $bokun_settings->bokun_display_settings();
+                                break;
 			}
 		}
 	}
