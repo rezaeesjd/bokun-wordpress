@@ -81,6 +81,7 @@ function bokun_fetch_bookings($upgrade = '') {
     ];
 
     $all_bookings = [];
+    $found_identifiers = [];
     $page = 1;
     $max_pages = 100; // Safety guard to avoid an infinite loop
 
@@ -132,7 +133,7 @@ function bokun_fetch_bookings($upgrade = '') {
 
         foreach ($data['items'] as $booking_item) {
             $identifier = $booking_item['confirmationCode'] ?? ($booking_item['externalBookingReference'] ?? 'unknown identifier');
-            error_log('Found booking ' . $identifier);
+            $found_identifiers[] = 'Found booking ' . $identifier;
             $all_bookings[] = $booking_item;
         }
 
@@ -144,7 +145,10 @@ function bokun_fetch_bookings($upgrade = '') {
     }
 
     if (!empty($all_bookings)) {
-        return $all_bookings;
+        return [
+            'bookings' => $all_bookings,
+            'found_identifiers' => $found_identifiers,
+        ];
     }
 
     return 'No bookings available to process.';
@@ -881,10 +885,13 @@ add_action('rest_api_init', function () {
 // Callback function for the endpoint to import bookings
 function bokun_import_bookings() {
     // Fetch and process the bookings
-    $bookings = bokun_fetch_bookings();    
-    if (is_array($bookings)) {
-        bokun_save_bookings_as_posts($bookings);
-        return new WP_REST_Response('Bookings imported successfully.', 200);
+    $bookings = bokun_fetch_bookings();
+    if (is_array($bookings) && isset($bookings['bookings'])) {
+        bokun_save_bookings_as_posts($bookings['bookings']);
+        return new WP_REST_Response([
+            'message' => 'Bookings imported successfully.',
+            'foundBookings' => isset($bookings['found_identifiers']) ? $bookings['found_identifiers'] : [],
+        ], 200);
     }
 
     return new WP_REST_Response('Error fetching bookings: ' . $bookings, 500);
