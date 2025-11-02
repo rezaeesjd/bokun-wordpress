@@ -293,11 +293,18 @@ class BokunBookingManagement {
         // need to check here if its front section than enqueue script
         /*********** register and enqueue styles ***************/
 
-            wp_register_style( 
-                'bokun_front_css',  
-                BOKUN_CSS_URL.'bokun_front.css?rand='.rand(1,999), 
-                false, 
-                $bokun_version 
+            wp_register_style(
+                'bokun_front_css',
+                BOKUN_CSS_URL.'bokun_front.css?rand='.rand(1,999),
+                false,
+                $bokun_version
+            );
+
+            wp_register_style(
+                'bokun_dashboard_css',
+                BOKUN_CSS_URL.'bokun_dashboard.css?rand='.rand(1,999),
+                [],
+                $bokun_version
             );
 
             // wp_enqueue_style( 'bokun_front_css' );
@@ -306,12 +313,20 @@ class BokunBookingManagement {
             /*********** register and enqueue scripts ***************/
             echo "<script> var ajaxurl = '".admin_url( 'admin-ajax.php' )."'; </script>";
 
-            wp_register_script( 
-                'bokun_front_js', 
-                BOKUN_JS_URL.'bokun_front.js?rand='.rand(1,999), 
-                'jQuery', 
-                $bokun_version, 
-                true 
+            wp_register_script(
+                'bokun_front_js',
+                BOKUN_JS_URL.'bokun_front.js?rand='.rand(1,999),
+                'jQuery',
+                $bokun_version,
+                true
+            );
+
+            wp_register_script(
+                'bokun_dashboard_js',
+                BOKUN_JS_URL.'bokun-dashboard.js?rand='.rand(1,999),
+                ['jquery'],
+                $bokun_version,
+                true
             );
 
             wp_enqueue_script( 'bokun_front_js' );           

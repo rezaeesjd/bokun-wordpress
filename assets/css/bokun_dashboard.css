@@ -1,0 +1,245 @@
+.bokun-dashboard {
+  background-color: #fff;
+  border: 1px solid #dcdcde;
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+  font-family: inherit;
+  color: #1d2327;
+}
+
+.bokun-dashboard-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: flex-end;
+  margin-bottom: 1.5rem;
+}
+
+.bokun-dashboard-search {
+  flex: 1 1 260px;
+  min-width: 220px;
+}
+
+.bokun-dashboard-search-input {
+  position: relative;
+}
+
+.bokun-dashboard-search-input input[type="search"] {
+  width: 100%;
+  padding: 0.625rem 2.5rem 0.625rem 0.75rem;
+  border: 1px solid #c3c4c7;
+  border-radius: 4px;
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.bokun-dashboard-search-input input[type="search"]:focus {
+  outline: none;
+  box-shadow: 0 0 0 1px #2271b1;
+  border-color: #2271b1;
+}
+
+.bokun-dashboard-clear-search {
+  position: absolute;
+  right: 0.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: none;
+  color: #6c7781;
+  font-size: 1.125rem;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  display: none;
+}
+
+.bokun-dashboard-clear-search.is-visible {
+  display: block;
+}
+
+.bokun-dashboard-filters {
+  position: relative;
+}
+
+.bokun-dashboard-filter-toggle {
+  background-color: #2271b1;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 0.55rem 1rem;
+  cursor: pointer;
+  font-size: 0.95rem;
+  transition: background-color 0.2s ease;
+}
+
+.bokun-dashboard-filter-toggle:hover,
+.bokun-dashboard-filter-toggle:focus {
+  background-color: #1a5d92;
+  outline: none;
+}
+
+.bokun-dashboard-filter-dropdown {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  left: 0;
+  background: #fff;
+  border: 1px solid #dcdcde;
+  border-radius: 6px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12);
+  padding: 0.75rem;
+  min-width: 240px;
+  z-index: 1000;
+  display: none;
+}
+
+.bokun-dashboard-filters.is-open .bokun-dashboard-filter-dropdown {
+  display: block;
+}
+
+.bokun-dashboard-filter-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.bokun-dashboard-filter-actions button {
+  flex: 1;
+  border: 1px solid #c3c4c7;
+  border-radius: 4px;
+  background-color: #f0f0f1;
+  cursor: pointer;
+  padding: 0.4rem 0.5rem;
+  font-size: 0.85rem;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.bokun-dashboard-filter-actions button:hover,
+.bokun-dashboard-filter-actions button:focus {
+  background-color: #e2e2e3;
+  border-color: #8c8f94;
+  outline: none;
+}
+
+.bokun-dashboard-filter-options {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.bokun-dashboard-filter-options li {
+  margin-bottom: 0.5rem;
+}
+
+.bokun-dashboard-filter-options li:last-child {
+  margin-bottom: 0;
+}
+
+.bokun-dashboard-filter-options label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+
+.bokun-dashboard-table-wrapper {
+  overflow-x: auto;
+}
+
+.bokun-dashboard-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 640px;
+}
+
+.bokun-dashboard-table th,
+.bokun-dashboard-table td {
+  text-align: left;
+  padding: 0.75rem 0.5rem;
+  border-bottom: 1px solid #e2e4e7;
+  vertical-align: middle;
+  font-size: 0.95rem;
+}
+
+.bokun-dashboard-table th {
+  background-color: #f6f7f7;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.8rem;
+  letter-spacing: 0.02em;
+}
+
+.bokun-dashboard-table a {
+  color: #2271b1;
+  text-decoration: none;
+}
+
+.bokun-dashboard-table a:hover,
+.bokun-dashboard-table a:focus {
+  text-decoration: underline;
+}
+
+.bokun-dashboard-copy-button {
+  margin-left: 0.5rem;
+  border: 1px solid #c3c4c7;
+  border-radius: 4px;
+  background-color: #f0f0f1;
+  font-size: 0.8rem;
+  padding: 0.3rem 0.6rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.bokun-dashboard-copy-button:hover,
+.bokun-dashboard-copy-button:focus {
+  background-color: #2271b1;
+  color: #fff;
+  border-color: #1a5d92;
+  outline: none;
+}
+
+.bokun-dashboard-copy-button.has-feedback {
+  background-color: #2271b1;
+  color: #fff;
+  border-color: #1a5d92;
+}
+
+.bokun-dashboard-no-results {
+  margin-top: 1rem;
+  font-style: italic;
+  color: #646970;
+  display: none;
+}
+
+.bokun-dashboard-no-results.is-visible {
+  display: block;
+}
+
+.bokun-dashboard-empty {
+  margin: 1rem 0;
+  font-style: italic;
+  color: #646970;
+}
+
+@media (max-width: 782px) {
+  .bokun-dashboard-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .bokun-dashboard-search {
+    width: 100%;
+  }
+
+  .bokun-dashboard-filter-toggle {
+    width: fit-content;
+  }
+
+  .bokun-dashboard-table {
+    min-width: 100%;
+  }
+}
