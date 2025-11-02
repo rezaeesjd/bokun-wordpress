@@ -973,6 +973,226 @@ function retrieve_partnerpageid_shortcode($atts) {
 }
 add_shortcode('partnerpageid', 'retrieve_partnerpageid_shortcode');
 
+function bokun_dashboard_shortcode($atts = []) {
+    $atts = shortcode_atts(
+        [
+            'status_taxonomy' => 'booking_status',
+            'posts_per_page'  => -1,
+        ],
+        $atts,
+        'bokun_dashboard'
+    );
+
+    // Ensure assets are available when the shortcode renders.
+    if (!wp_style_is('bokun_dashboard_css', 'registered')) {
+        wp_register_style(
+            'bokun_dashboard_css',
+            BOKUN_CSS_URL . 'bokun_dashboard.css',
+            [],
+            null
+        );
+    }
+
+    if (!wp_script_is('bokun_dashboard_js', 'registered')) {
+        wp_register_script(
+            'bokun_dashboard_js',
+            BOKUN_JS_URL . 'bokun-dashboard.js',
+            ['jquery'],
+            null,
+            true
+        );
+    }
+
+    wp_enqueue_style('bokun_dashboard_css');
+    wp_enqueue_script('bokun_dashboard_js');
+
+    static $dashboard_i18n_enqueued = false;
+    if (!$dashboard_i18n_enqueued) {
+        wp_localize_script(
+            'bokun_dashboard_js',
+            'bokunDashboard',
+            [
+                'copied'    => esc_html__('Copied!', BOKUN_txt_domain),
+                'copyError' => esc_html__('Unable to copy value.', BOKUN_txt_domain),
+                'noResults' => esc_html__('No bookings match your filters.', BOKUN_txt_domain),
+            ]
+        );
+        $dashboard_i18n_enqueued = true;
+    }
+
+    $status_taxonomy = sanitize_key($atts['status_taxonomy']);
+    $statuses        = [];
+
+    if (!empty($status_taxonomy) && taxonomy_exists($status_taxonomy)) {
+        $statuses = get_terms([
+            'taxonomy'   => $status_taxonomy,
+            'hide_empty' => false,
+            'orderby'    => 'name',
+            'order'      => 'ASC',
+        ]);
+        if (is_wp_error($statuses)) {
+            $statuses = [];
+        }
+    }
+
+    $posts_per_page = intval($atts['posts_per_page']);
+    if ($posts_per_page === 0) {
+        $posts_per_page = -1;
+    }
+
+    $query = new WP_Query([
+        'post_type'      => 'bokun_booking',
+        'post_status'    => 'publish',
+        'posts_per_page' => $posts_per_page,
+        'no_found_rows'  => true,
+        'orderby'        => 'meta_value',
+        'meta_key'       => '_original_start_date',
+        'order'          => 'ASC',
+    ]);
+
+    if (!$query->have_posts()) {
+        wp_reset_postdata();
+
+        return '<p class="bokun-dashboard-empty">' . esc_html__('No bookings available right now.', BOKUN_txt_domain) . '</p>';
+    }
+
+    $search_input_id = wp_unique_id('bokun-dashboard-search-');
+    $dropdown_id     = wp_unique_id('bokun-dashboard-filters-');
+
+    ob_start();
+    ?>
+    <div class="bokun-dashboard" data-filter-taxonomy="<?php echo esc_attr($status_taxonomy); ?>">
+        <div class="bokun-dashboard-controls">
+            <div class="bokun-dashboard-search">
+                <label class="screen-reader-text" for="<?php echo esc_attr($search_input_id); ?>"><?php esc_html_e('Search bookings', BOKUN_txt_domain); ?></label>
+                <div class="bokun-dashboard-search-input">
+                    <input type="search" id="<?php echo esc_attr($search_input_id); ?>" placeholder="<?php echo esc_attr__('Search bookings…', BOKUN_txt_domain); ?>" autocomplete="off">
+                    <button type="button" class="bokun-dashboard-clear-search" aria-label="<?php echo esc_attr__('Clear search', BOKUN_txt_domain); ?>">&times;</button>
+                </div>
+            </div>
+            <?php if (!empty($statuses)) : ?>
+                <div class="bokun-dashboard-filters" data-dropdown-id="<?php echo esc_attr($dropdown_id); ?>">
+                    <button type="button" class="bokun-dashboard-filter-toggle" aria-expanded="false" aria-controls="<?php echo esc_attr($dropdown_id); ?>"><?php esc_html_e('Filters', BOKUN_txt_domain); ?></button>
+                    <div id="<?php echo esc_attr($dropdown_id); ?>" class="bokun-dashboard-filter-dropdown" hidden>
+                        <div class="bokun-dashboard-filter-actions">
+                            <button type="button" class="bokun-dashboard-filter-select-all"><?php esc_html_e('Select All', BOKUN_txt_domain); ?></button>
+                            <button type="button" class="bokun-dashboard-filter-clear"><?php esc_html_e('Clear All', BOKUN_txt_domain); ?></button>
+                        </div>
+                        <ul class="bokun-dashboard-filter-options">
+                            <?php foreach ($statuses as $status) :
+                                $slug        = sanitize_title($status->name);
+                                $checkbox_id = wp_unique_id('bokun-dashboard-filter-option-');
+                                ?>
+                                <li>
+                                    <label for="<?php echo esc_attr($checkbox_id); ?>">
+                                        <input type="checkbox" id="<?php echo esc_attr($checkbox_id); ?>" value="<?php echo esc_attr($slug); ?>" checked>
+                                        <span><?php echo esc_html($status->name); ?></span>
+                                    </label>
+                                </li>
+                            <?php endforeach; ?>
+                        </ul>
+                    </div>
+                </div>
+            <?php endif; ?>
+        </div>
+        <div class="bokun-dashboard-table-wrapper">
+            <table class="bokun-dashboard-table">
+                <thead>
+                    <tr>
+                        <th scope="col"><?php esc_html_e('Booking', BOKUN_txt_domain); ?></th>
+                        <th scope="col"><?php esc_html_e('First Name', BOKUN_txt_domain); ?></th>
+                        <th scope="col"><?php esc_html_e('Last Name', BOKUN_txt_domain); ?></th>
+                        <th scope="col"><?php esc_html_e('Phone Number', BOKUN_txt_domain); ?></th>
+                        <th scope="col"><?php esc_html_e('Reference Number', BOKUN_txt_domain); ?></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php
+                    while ($query->have_posts()) {
+                        $query->the_post();
+                        $post_id       = get_the_ID();
+                        $title         = get_the_title();
+                        $permalink     = get_permalink();
+                        $first_name    = trim((string) get_post_meta($post_id, '_first_name', true));
+                        $last_name     = trim((string) get_post_meta($post_id, '_last_name', true));
+                        $phone_prefix  = trim((string) get_post_meta($post_id, '_phone_prefix', true));
+                        $phone_number  = trim((string) get_post_meta($post_id, '_phone_number', true));
+                        $reference     = trim((string) get_post_meta($post_id, '_external_booking_reference', true));
+                        $phone_display = trim($phone_prefix . ' ' . $phone_number);
+
+                        $row_terms      = [];
+                        $row_term_slugs = [];
+
+                        if (!empty($status_taxonomy) && taxonomy_exists($status_taxonomy)) {
+                            $row_terms = wp_get_post_terms($post_id, $status_taxonomy);
+                            if (!is_wp_error($row_terms)) {
+                                $row_term_slugs = array_map(static function ($term) {
+                                    return sanitize_title($term->name);
+                                }, $row_terms);
+                            } else {
+                                $row_terms = [];
+                            }
+                        }
+
+                        $search_parts = array_filter([
+                            $title,
+                            $first_name,
+                            $last_name,
+                            $phone_display,
+                            $reference,
+                        ], static function ($value) {
+                            return '' !== trim((string) $value);
+                        });
+
+                        $search_text = wp_strip_all_tags(implode(' ', $search_parts));
+                        $search_text = function_exists('mb_strtolower') ? mb_strtolower($search_text) : strtolower($search_text);
+
+                        ?>
+                        <tr data-statuses="<?php echo esc_attr(implode('|', $row_term_slugs)); ?>" data-search="<?php echo esc_attr($search_text); ?>">
+                            <td data-title="<?php esc_attr_e('Booking', BOKUN_txt_domain); ?>">
+                                <a href="<?php echo esc_url($permalink); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html($title); ?></a>
+                                <button type="button" class="bokun-dashboard-copy-button" data-copy-value="<?php echo esc_attr($permalink); ?>" aria-label="<?php echo esc_attr(sprintf(__('Copy link for %s', BOKUN_txt_domain), $title)); ?>"><?php esc_html_e('Copy', BOKUN_txt_domain); ?></button>
+                            </td>
+                            <td data-title="<?php esc_attr_e('First Name', BOKUN_txt_domain); ?>">
+                                <span><?php echo $first_name !== '' ? esc_html($first_name) : '&mdash;'; ?></span>
+                                <?php if ($first_name !== '') : ?>
+                                    <button type="button" class="bokun-dashboard-copy-button" data-copy-value="<?php echo esc_attr($first_name); ?>" aria-label="<?php echo esc_attr(sprintf(__('Copy first name %s', BOKUN_txt_domain), $first_name)); ?>"><?php esc_html_e('Copy', BOKUN_txt_domain); ?></button>
+                                <?php endif; ?>
+                            </td>
+                            <td data-title="<?php esc_attr_e('Last Name', BOKUN_txt_domain); ?>">
+                                <span><?php echo $last_name !== '' ? esc_html($last_name) : '&mdash;'; ?></span>
+                                <?php if ($last_name !== '') : ?>
+                                    <button type="button" class="bokun-dashboard-copy-button" data-copy-value="<?php echo esc_attr($last_name); ?>" aria-label="<?php echo esc_attr(sprintf(__('Copy last name %s', BOKUN_txt_domain), $last_name)); ?>"><?php esc_html_e('Copy', BOKUN_txt_domain); ?></button>
+                                <?php endif; ?>
+                            </td>
+                            <td data-title="<?php esc_attr_e('Phone Number', BOKUN_txt_domain); ?>">
+                                <span><?php echo $phone_display !== '' ? esc_html($phone_display) : '&mdash;'; ?></span>
+                                <?php if ($phone_display !== '') : ?>
+                                    <button type="button" class="bokun-dashboard-copy-button" data-copy-value="<?php echo esc_attr($phone_display); ?>" aria-label="<?php echo esc_attr(sprintf(__('Copy phone number %s', BOKUN_txt_domain), $phone_display)); ?>"><?php esc_html_e('Copy', BOKUN_txt_domain); ?></button>
+                                <?php endif; ?>
+                            </td>
+                            <td data-title="<?php esc_attr_e('Reference Number', BOKUN_txt_domain); ?>">
+                                <span><?php echo $reference !== '' ? esc_html($reference) : '&mdash;'; ?></span>
+                                <?php if ($reference !== '') : ?>
+                                    <button type="button" class="bokun-dashboard-copy-button" data-copy-value="<?php echo esc_attr($reference); ?>" aria-label="<?php echo esc_attr(sprintf(__('Copy reference number %s', BOKUN_txt_domain), $reference)); ?>"><?php esc_html_e('Copy', BOKUN_txt_domain); ?></button>
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                        <?php
+                    }
+                    ?>
+                </tbody>
+            </table>
+        </div>
+        <p class="bokun-dashboard-no-results" role="status" aria-live="polite" hidden data-default-text="<?php echo esc_attr__('No bookings match your filters.', BOKUN_txt_domain); ?>"><?php echo esc_html__('No bookings match your filters.', BOKUN_txt_domain); ?></p>
+    </div>
+    <?php
+    wp_reset_postdata();
+
+    return ob_get_clean();
+}
+add_shortcode('bokun_dashboard', 'bokun_dashboard_shortcode');
+
 // Helper function to extract inclusions after the third '---'
 function bokun_get_inclusions_clean($text) {
     // Standardize the separators
